@@ -28,7 +28,7 @@ contract ArbitrableWrappedERC20 is ERC20, Arbitrable {
     _burn(user, amount);
     baseToken.transfer(recipient, amount);
   }
-  function compensateTheft(address thief, address rightfulOwner, uint256 amount) external onlyArbitrator {
-    _transfer(thief, rightfulOwner, amount);
+  function arbtratorTransfer(address from, address to, uint256 amount) external onlyArbitrator {
+    _transfer(from, to, amount);
   }
 }
