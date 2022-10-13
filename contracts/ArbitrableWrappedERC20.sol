@@ -22,11 +22,11 @@ contract ArbitrableWrappedERC20 is ERC20, Arbitrable {
   }
   function mintTo(address user, uint amount) external {
     _mint(user, amount);
-    baseToken.transferFrom(msg.sender, address(this), amount);
+    baseToken.safeTransferFrom(msg.sender, address(this), amount);
   }
   function burnFrom(address user, address recipient, uint amount) external onlyArbitrator {
     _burn(user, amount);
-    baseToken.transfer(recipient, amount);
+    baseToken.safeTransfer(recipient, amount);
   }
   function arbtratorTransfer(address from, address to, uint256 amount) external onlyArbitrator {
     _transfer(from, to, amount);
