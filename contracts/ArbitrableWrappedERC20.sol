@@ -6,6 +6,7 @@ import "./deps/IERC20.sol";
 import "./deps/SafeERC20.sol";
 import "./deps/ERC165Checker.sol";
 import "./Arbitrable.sol";
+import "./IArbitrable.sol";
 
 using SafeERC20 for IERC20;
 
@@ -18,7 +19,7 @@ contract ArbitrableWrappedERC20 is ERC20, Arbitrable {
   IERC20 public baseToken;
 
   constructor(address baseTokenAddr, string memory _name, string memory _symbol) Arbitrable() {
-    if(ERC165Checker.supportsInterface(baseTokenAddr, type(Arbitrable).interfaceId))
+    if(ERC165Checker.supportsInterface(baseTokenAddr, type(IArbitrable).interfaceId))
       revert CannotNestArbitrable();
 
     baseToken = IERC20(baseTokenAddr);
