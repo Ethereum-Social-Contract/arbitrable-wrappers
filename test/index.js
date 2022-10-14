@@ -1,6 +1,7 @@
 const Web3 = require('web3');
 const ganache = require('ganache');
 const fs = require('fs');
+const assert = require('assert');
 
 const web3 = new Web3(ganache.provider({ logging: { quiet: true } }));
 web3.eth.handleRevert = true;
@@ -68,12 +69,16 @@ async function deployContract(account, contractName, ...args) {
   return deployed;
 }
 
-async function throws(asyncFun) {
+async function throws(asyncFun, errorType) {
   let hadError;
   try {
     await asyncFun();
   } catch(error) {
-    hadError = true;
+    hadError = error;
+  }
+  if(errorType) {
+    assert.strictEqual(hadError.data.result,
+      web3.eth.abi.encodeFunctionSignature(errorType));
   }
   return hadError;
 }
