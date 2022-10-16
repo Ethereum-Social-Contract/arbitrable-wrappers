@@ -9,11 +9,22 @@ using AddressSet for AddressSet.Set;
 error Unauthorized();
 error InvokeFailed();
 
-// It is recommended to call _addParent(msg.sender) in subclass constructor
-abstract contract Arbitrator is IArbitrator {
+contract Arbitrator is IArbitrator {
+  string public contactURI;
   AddressSet.Set _parents;
 
   event TxSent(address to, bytes data, bytes returned);
+  event ContactURIChanged(string oldContactURI, string newContactURI);
+
+  constructor(string memory _contactURI) {
+    contactURI = _contactURI;
+    _addParent(msg.sender);
+  }
+
+  function setContactURI(string memory newContactURI) external onlyParentArbitrator {
+    emit ContactURIChanged(contactURI, newContactURI);
+    contactURI = newContactURI;
+  }
 
   function parentArbitrators() external view returns (address[] memory) {
     return _parents.keyList;

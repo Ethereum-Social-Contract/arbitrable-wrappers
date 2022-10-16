@@ -34,7 +34,6 @@ error PoolMismatch();
 // TODO support swap route through multiple pools at once
 // TODO support this helper as a parentArbitrator instead of an intermediary layer?
 contract UniswapV2Helper is Arbitrator {
-  string public contactURI = "Refer to parent, this is only capability layer";
   IChainlinkFeed public inputPriceFeed;
   IChainlinkFeed public outputPriceFeed;
   IUniswapV2Pair public liquidityPool;
@@ -53,8 +52,7 @@ contract UniswapV2Helper is Arbitrator {
     address _outputToken,
     uint _slippageNumerator,
     uint _slippageDenominator
-  ) {
-    _addParent(msg.sender);
+  ) Arbitrator("Refer to parent, this is only a capability layer") {
     slippageNumerator = _slippageNumerator;
     slippageDenominator = _slippageDenominator;
     if(slippageNumerator > slippageDenominator) revert InvalidSlippage();
