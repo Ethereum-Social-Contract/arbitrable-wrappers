@@ -3,7 +3,9 @@ pragma solidity ^0.8.13;
 
 import "./deps/IERC20.sol";
 import "./deps/SafeERC20.sol";
+import "./deps/ERC165Checker.sol";
 import "./Arbitrator.sol";
+import "./IArbitrable.sol";
 
 using SafeERC20 for IArbitrableWrappedERC20;
 using SafeERC20 for IERC20;
@@ -27,6 +29,7 @@ interface IArbitrableWrappedERC20 is IERC20 {
 
 error InvalidSlippage();
 error FeedMismatch();
+error TokensMustBeArbitrable();
 error PoolMismatch();
 
 // Allow special access to a protocol that is not within arbitrable jurisdiction
@@ -41,21 +44,13 @@ contract UniswapV2Helper is Arbitrator {
   IArbitrableWrappedERC20 public outputToken;
   bool public inputIsToken0;
 
-  uint public slippageNumerator;
-  uint public slippageDenominator;
-
   constructor(
     IChainlinkFeed _inputPriceFeed,
     IChainlinkFeed _outputPriceFeed,
     IUniswapV2Pair _liquidityPool,
     address _inputToken,
-    address _outputToken,
-    uint _slippageNumerator,
-    uint _slippageDenominator
+    address _outputToken
   ) Arbitrator("Refer to parent, this is only a capability layer") {
-    slippageNumerator = _slippageNumerator;
-    slippageDenominator = _slippageDenominator;
-    if(slippageNumerator > slippageDenominator) revert InvalidSlippage();
     inputPriceFeed = _inputPriceFeed;
     outputPriceFeed = _outputPriceFeed;
     if(inputPriceFeed.decimals() != outputPriceFeed.decimals()) revert FeedMismatch();
@@ -63,6 +58,9 @@ contract UniswapV2Helper is Arbitrator {
     liquidityPool = _liquidityPool;
     inputToken = IArbitrableWrappedERC20(_inputToken);
     outputToken = IArbitrableWrappedERC20(_outputToken);
+    if(!ERC165Checker.supportsInterface(_inputToken, type(IArbitrable).interfaceId)
+        || !ERC165Checker.supportsInterface(_outputToken, type(IArbitrable).interfaceId))
+      revert TokensMustBeArbitrable();
     address token0 = liquidityPool.token0();
     address token1 = liquidityPool.token1();
     address inputBase = inputToken.baseToken();
@@ -76,7 +74,13 @@ contract UniswapV2Helper is Arbitrator {
     }
   }
 
-  function swap(address recipient, uint amountIn) external {
+  function swap(
+    address recipient,
+    uint amountIn,
+    uint slippageNumerator,
+    uint slippageDenominator
+  ) external {
+    if(slippageNumerator > slippageDenominator) revert InvalidSlippage();
     uint minOut =
       (amountIn * inputPriceFeed.latestAnswer() * slippageNumerator)
       / (outputPriceFeed.latestAnswer() * slippageDenominator);
