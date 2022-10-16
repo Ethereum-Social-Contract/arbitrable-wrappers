@@ -32,6 +32,7 @@ error PoolMismatch();
 // Allow special access to a protocol that is not within arbitrable jurisdiction
 //  by creating a layer that can be utilized by an arbitrator.
 // TODO support swap route through multiple pools at once
+// TODO support this helper as a parentArbitrator instead of an intermediary layer?
 contract UniswapV2Helper is Arbitrator {
   string public contactURI = "Refer to parent, this is only capability layer";
   IChainlinkFeed public inputPriceFeed;
