@@ -23,6 +23,12 @@ abstract contract Arbitrable is ERC165, IArbitrable {
     _;
   }
 
+  modifier onlyArbitratorIfAvailable() {
+    if(msg.sender != arbitrator && arbitrator != address(0))
+      revert Unauthorized();
+    _;
+  }
+
   function changeArbitrator(address newArbitrator) external onlyArbitrator {
     emit ArbitratorChanged(arbitrator, newArbitrator);
     arbitrator = newArbitrator;

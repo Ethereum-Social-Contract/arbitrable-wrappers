@@ -80,7 +80,7 @@ async function throws(asyncFun, errorType) {
     assert.strictEqual(hadError.data.result,
       web3.eth.abi.encodeFunctionSignature(errorType));
   }
-  return hadError;
+  return !!hadError;
 }
 
 const cases = fs.readdirSync(__dirname)
