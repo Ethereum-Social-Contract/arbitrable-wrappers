@@ -1,29 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import "./deps/ERC20.sol";
-import "./deps/IERC20.sol";
-import "./deps/SafeERC20.sol";
-import "./deps/ERC165Checker.sol";
-import "./IArbitrable.sol";
+import "../../contracts/deps/ERC20.sol";
+import "../../contracts/deps/IERC20.sol";
+import "../../contracts/deps/SafeERC20.sol";
 
 using SafeERC20 for IERC20;
 
-error MustBeArbitrable();
 error DepositTooSmall();
 error InsufficientBalance();
 
-// Uniswap V2 style liquidity pool that always checks the balances
-//  instead of maintaining reserve amounts in local state
-// Both tokens are required to be Arbitrable in order to keep all value
-//  within arbitrable jurisdiction
-// Uses more gas but we got L2 now where execution is cheap
-contract ArbitrableERC20LiquidityPool is ERC20 {
+// Same as contracts/ArbitrableERC20LiquidityPool.sol but
+//  it doesn't care that the tokens are arbitrable
+//   and it keeps the reserve amounts in local state
+contract UniswapV2StyleLiquidityPool is ERC20 {
   string public name;
   string public symbol;
   uint8 public decimals;
 
   IERC20[2] public tokens;
+  uint[2] public reserves;
   // 0-0xffffffff: 0-100%
   uint32 public swapFee;
 
@@ -37,6 +33,8 @@ contract ArbitrableERC20LiquidityPool is ERC20 {
     unlocked = 1;
   }
 
+  event Swap(uint amount0Out, uint amount1Out, address to, bytes data);
+
   constructor(
     address token0Addr,
     address token1Addr,
@@ -45,10 +43,6 @@ contract ArbitrableERC20LiquidityPool is ERC20 {
     string memory _symbol,
     uint8 _decimals
   ) {
-    if(!ERC165Checker.supportsInterface(token0Addr, type(IArbitrable).interfaceId)
-       || !ERC165Checker.supportsInterface(token1Addr, type(IArbitrable).interfaceId))
-      revert MustBeArbitrable();
-
     tokens[0] = IERC20(token0Addr);
     tokens[1] = IERC20(token1Addr);
     swapFee = _swapFee;
@@ -65,16 +59,14 @@ contract ArbitrableERC20LiquidityPool is ERC20 {
     return address(tokens[1]);
   }
 
-  function getReserves() public view returns(uint[2] memory reserves) {
-    reserves[0] = tokens[0].balanceOf(address(this));
-    reserves[1] = tokens[1].balanceOf(address(this));
+  function getReserves() public view returns(uint[2] memory) {
+    return reserves;
   }
 
   function deposit(uint amount0, uint amount1) external lock returns(uint liquidity) {
     if(amount0 < MINIMUM_DEPOSIT || amount1 < MINIMUM_DEPOSIT)
       revert DepositTooSmall();
 
-    uint[2] memory reserves = getReserves();
     uint amount0ToTake;
     uint amount1ToTake;
     if(reserves[0] == 0 || reserves[1] == 0) {
@@ -90,6 +82,8 @@ contract ArbitrableERC20LiquidityPool is ERC20 {
         amount1ToTake = (amount0 * reserves[1]) / reserves[0];
       }
     }
+    reserves[0] += amount0ToTake;
+    reserves[1] += amount1ToTake;
     liquidity = sqrt(amount0ToTake * amount1ToTake);
     _mint(msg.sender, liquidity);
     tokens[0].safeTransferFrom(msg.sender, address(this), amount0ToTake);
@@ -98,10 +92,11 @@ contract ArbitrableERC20LiquidityPool is ERC20 {
 
   function withdraw(uint liquidity) external lock returns(uint amount0, uint amount1) {
     require(balanceOf[msg.sender] >= liquidity);
-    uint[2] memory reserves = getReserves();
 
     amount0 = (liquidity * reserves[0]) / totalSupply;
     amount1 = (liquidity * reserves[1]) / totalSupply;
+    reserves[0] -= amount0;
+    reserves[1] -= amount1;
 
     balanceOf[msg.sender] -= liquidity;
     totalSupply -= liquidity;
@@ -111,21 +106,23 @@ contract ArbitrableERC20LiquidityPool is ERC20 {
     tokens[1].safeTransfer(msg.sender, amount1);
   }
 
-  // This function differs from Uniswap V2 style, requiring more gas
-  //  since it must perform extra an extra transfer of the token
-  //  due to not being able to calculate the amountIn from the difference
-  //  between the stored reserve amount and the fromToken balance
-  function swapRoute(uint8 fromToken, uint amountIn, address recipient) external lock returns(uint amountOut) {
+  function swap(uint amount0Out, uint amount1Out, address to, bytes calldata data) external {
+    emit Swap(amount0Out, amount1Out, to, data);
+    swapRoute(amount0Out > 0 ? 0 : 1, to);
+  }
+
+  function swapRoute(uint8 fromToken, address recipient) public lock returns(uint amountOut) {
     require(fromToken == 0 || fromToken == 1);
-    require(amountIn > 0);
-
     uint8 toToken = fromToken == 0 ? 1 : 0;
-    uint[2] memory reserves = getReserves();
 
-    amountOut = (amountIn * reserves[toToken]) / reserves[fromToken];
+    uint diff = IERC20(tokens[fromToken]).balanceOf(address(this)) - reserves[fromToken];
+    require(diff > 0, 'Input Too Low');
+
+    reserves[fromToken] += diff;
+    amountOut = (diff * reserves[toToken]) / reserves[fromToken];
     amountOut -= (amountOut * swapFee) / 0xffffffff;
+    reserves[toToken] -= amountOut;
 
-    tokens[fromToken].safeTransferFrom(msg.sender, address(this), amountIn);
     tokens[toToken].safeTransfer(recipient, amountOut);
   }
 

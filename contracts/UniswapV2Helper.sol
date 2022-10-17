@@ -5,6 +5,7 @@ import "./deps/IERC20.sol";
 import "./deps/SafeERC20.sol";
 import "./deps/ERC165Checker.sol";
 import "./Arbitrator.sol";
+import "./IArbitrator.sol";
 import "./IArbitrable.sol";
 
 using SafeERC20 for IArbitrableWrappedERC20;
@@ -35,24 +36,29 @@ error PoolMismatch();
 // Allow special access to a protocol that is not within arbitrable jurisdiction
 //  by creating a layer that can be utilized by an arbitrator.
 // TODO support swap route through multiple pools at once
-// TODO support this helper as a parentArbitrator instead of an intermediary layer?
 contract UniswapV2Helper is Arbitrator {
   IChainlinkFeed public inputPriceFeed;
   IChainlinkFeed public outputPriceFeed;
   IUniswapV2Pair public liquidityPool;
   IArbitrableWrappedERC20 public inputToken;
   IArbitrableWrappedERC20 public outputToken;
+  IArbitrator public primaryArbitrator;
   bool public inputIsToken0;
+
+  bytes4 private constant SELECTOR_BURNFROM = bytes4(keccak256(bytes(
+    'burnFrom(address,address,uint256)')));
 
   constructor(
     IChainlinkFeed _inputPriceFeed,
     IChainlinkFeed _outputPriceFeed,
     IUniswapV2Pair _liquidityPool,
     address _inputToken,
-    address _outputToken
+    address _outputToken,
+    IArbitrator _primaryArbitrator
   ) Arbitrator("Refer to parent, this is only a capability layer") {
     inputPriceFeed = _inputPriceFeed;
     outputPriceFeed = _outputPriceFeed;
+    primaryArbitrator = _primaryArbitrator;
     if(inputPriceFeed.decimals() != outputPriceFeed.decimals()) revert FeedMismatch();
 
     liquidityPool = _liquidityPool;
@@ -93,7 +99,9 @@ contract UniswapV2Helper is Arbitrator {
       minOut *= 10**(inputDecimals - outputDecimals);
     }
 
-    inputToken.burnFrom(msg.sender, address(liquidityPool), amountIn);
+    primaryArbitrator.parentArbitratorInvoke(address(inputToken),
+      abi.encodeWithSelector(
+        SELECTOR_BURNFROM, msg.sender, address(liquidityPool), amountIn));
     if(inputIsToken0) {
       liquidityPool.swap(0, minOut, address(this), "");
     } else {
@@ -102,6 +110,7 @@ contract UniswapV2Helper is Arbitrator {
     IERC20 outputBaseToken = IERC20(outputToken.baseToken());
     uint outputBalance = outputBaseToken.balanceOf(address(this));
     require(outputBalance >= minOut);
+    outputBaseToken.approve(address(outputToken), outputBalance);
     outputToken.mintTo(recipient, outputBalance);
   }
 
