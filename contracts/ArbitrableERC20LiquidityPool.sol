@@ -115,7 +115,7 @@ contract ArbitrableERC20LiquidityPool is ERC20 {
   //  since it must perform extra an extra transfer of the token
   //  due to not being able to calculate the amountIn from the difference
   //  between the stored reserve amount and the fromToken balance
-  function swapRoute(uint8 fromToken, uint amountIn, address recipient) external lock returns(uint amountOut) {
+  function swapRoute(uint8 fromToken, uint amountIn, uint minOut, address recipient) external lock returns(uint amountOut) {
     require(fromToken == 0 || fromToken == 1);
     require(amountIn > 0);
 
@@ -124,6 +124,7 @@ contract ArbitrableERC20LiquidityPool is ERC20 {
 
     amountOut = (amountIn * reserves[toToken]) / reserves[fromToken];
     amountOut -= (amountOut * swapFee) / 0xffffffff;
+    require(minOut <= amountOut);
 
     tokens[fromToken].safeTransferFrom(msg.sender, address(this), amountIn);
     tokens[toToken].safeTransfer(recipient, amountOut);
