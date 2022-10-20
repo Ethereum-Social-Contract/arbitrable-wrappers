@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import "./deps/AddressSet.sol";
+import "./deps/utils/AddressSet.sol";
 import "./IArbitrator.sol";
 
 using AddressSet for AddressSet.Set;

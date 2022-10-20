@@ -8,10 +8,11 @@ Contract | Description
 [`IArbitrable`](contracts/IArbitrable.sol) | Interface specification for arbitrable contracts
 [`Arbitrator`](contracts/Arbitrator.sol) | Basic arbitrator functionality. Provides functions to add/remove parent arbitrators and for them to invoke on behalf of the contract.
 [`IArbitrator`](contracts/IArbitrator.sol) | Interface specification for arbitrator contracts.
-[`ArbitrableWrappedERC20`](contracts/ArbitrableWrappedERC20.sol) | ERC20 wrapper into which anybody can deposit.<ul><li>Only the specified arbitrator can withdraw tokens from the wrapper (i.e. holders must make a case to the arbitrator to leave)</li><li>The arbitrator may move tokens between accounts as they decide.</li>
+[`ArbitrableWrappedERC20`](contracts/ArbitrableWrappedERC20.sol) | ERC20 wrapper into which anybody can deposit.<ul><li>Only the specified arbitrator can withdraw tokens from the wrapper (i.e. holders must make a case to the arbitrator to leave)</li><li>The arbitrator may move tokens between accounts as they decide.</li></ul>
 [`ArbitrableERC20`](contracts/ArbitrableERC20.sol) | ERC20 token which can be minted/burned/transferred by arbitrator (i.e. natively arbitrable token)
 [`UniswapV2Helper`](contracts/UniswapV2Helper.sol) | Arbitrator helper that allows token holders access to liquidity outside the arbitrable jurisdiction
 [`ArbitrableERC20LiquidityPool`](contracts/ArbitrableERC20LiquidityPool.sol) | Alternatively, arbitable ERC20 tokens could be swapped using a modified UniswapV2-style liquidity pool which always checks the token balances instead of maintaining reserve amounts in local state. This allows liquidity providers to keep their tokens inside the arbitrable jurisdiction while earning swap fees.
+[`ArbitrableWrappedERC721`](contracts/ArbitrableWrappedERC721.sol) | ERC721 wrapper into which anybody can deposit an NFT from a specific collection.<ul><li>Doesn't support tokens from any collection because each collection may implement extensions.</li></ul>
 
 ## Implications of arbitrable jurisdictions
 

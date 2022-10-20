@@ -42,6 +42,7 @@ contract ArbitrableWrappedERC20 is ERC20, Arbitrable {
   }
 
   function arbitratorTransfer(address from, address to, uint256 amount) external onlyArbitrator {
+    // TODO hook for arbitrator to place rules on any transfer?
     _transfer(from, to, amount);
   }
 
