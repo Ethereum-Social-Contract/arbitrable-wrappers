@@ -6,6 +6,8 @@ import "./deps/ERC165Checker.sol";
 import "./Arbitrable.sol";
 import "./IArbitrable.sol";
 
+error CannotNestArbitrable();
+
 contract ArbitrableWrappedERC721 is ERC721, Arbitrable {
   IERC721Metadata public baseCollection;
 
@@ -16,6 +18,9 @@ contract ArbitrableWrappedERC721 is ERC721, Arbitrable {
   ) ERC721(name_, symbol_) Arbitrable()
   {
     baseCollection = baseCollection_;
+
+    if(ERC165Checker.supportsInterface(address(baseCollection), type(IArbitrable).interfaceId))
+      revert CannotNestArbitrable();
   }
 
   function supportsInterface(bytes4 interfaceId) public view virtual override(Arbitrable, ERC721) returns (bool) {
